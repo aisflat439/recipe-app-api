@@ -15,7 +15,7 @@ from core.models import Recipe, Tag, Ingredient
 from recipe.serializers import RecipeSerializer, RecipeDetailSerializer
 
 
-RECIPE_URL = reverse('recipe:recipe-list')
+RECIPES_URL = reverse('recipe:recipe-list')
 
 
 def image_upload_url(recipe_id):
@@ -58,7 +58,7 @@ class PublicRecipeApiTests(TestCase):
 
     def test_authorization_requried(self):
         """tests that auth is required"""
-        response = self.client.get(RECIPE_URL)
+        response = self.client.get(RECIPES_URL)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -79,7 +79,7 @@ class PrivateRecipeApiTests(TestCase):
         sample_recipe(user=self.user)
         sample_recipe(user=self.user)
 
-        response = self.client.get(RECIPE_URL)
+        response = self.client.get(RECIPES_URL)
 
         recipes = Recipe.objects.all().order_by('-id')
         serializer = RecipeSerializer(recipes, many=True)
@@ -97,7 +97,7 @@ class PrivateRecipeApiTests(TestCase):
         sample_recipe(user=non_target_user)
         sample_recipe(user=self.user)
 
-        response = self.client.get(RECIPE_URL)
+        response = self.client.get(RECIPES_URL)
 
         recipes = Recipe.objects.filter(user=self.user)
         serializer = RecipeSerializer(recipes, many=True)
@@ -126,7 +126,7 @@ class PrivateRecipeApiTests(TestCase):
             'price': 8.75
         }
 
-        response = self.client.post(RECIPE_URL, payload)
+        response = self.client.post(RECIPES_URL, payload)
         recipe = Recipe.objects.get(id=response.data['id'])
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -145,7 +145,7 @@ class PrivateRecipeApiTests(TestCase):
             'tags': [tag_one.id, tag_two.id],
         }
 
-        response = self.client.post(RECIPE_URL, payload)
+        response = self.client.post(RECIPES_URL, payload)
         recipe = Recipe.objects.get(id=response.data['id'])
         tags = recipe.tags.all()
 
@@ -166,7 +166,7 @@ class PrivateRecipeApiTests(TestCase):
             'ingredients': [ingredient_one.id, ingredient_two.id],
         }
 
-        response = self.client.post(RECIPE_URL, payload)
+        response = self.client.post(RECIPES_URL, payload)
         recipe = Recipe.objects.get(id=response.data['id'])
         ingredients = recipe.ingredients.all()
 
@@ -259,3 +259,47 @@ class RecipeImageUploadTests(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_filter_recipes_by_tags(self):
+        """returns recipes with specific tags"""
+        recipe_one = sample_recipe(user=self.user, title="soup")
+        recipe_two = sample_recipe(user=self.user, title="salad")
+        tag_one = sample_tag(user=self.user, name="Lunch")
+        tag_two = sample_tag(user=self.user, name="Dinner")
+        recipe_one.tags.add(tag_one)
+        recipe_two.tags.add(tag_two)
+        recipe_three = sample_recipe(user=self.user, title="tacos")
+
+        response = self.client.get(
+            RECIPES_URL,
+            {'tags': f'{tag_one.id}, {tag_two.id}'}
+        )
+        serializer_one = RecipeSerializer(recipe_one)
+        serializer_two = RecipeSerializer(recipe_two)
+        serializer_three = RecipeSerializer(recipe_three)
+
+        self.assertIn(serializer_one.data, response.data)
+        self.assertIn(serializer_two.data, response.data)
+        self.assertNotIn(serializer_three.data, response.data)
+
+    def test_filter_recipes_by_ingredients(self):
+        """returns recipes with specific ingredients"""
+        recipe_one = sample_recipe(user=self.user, title="soup")
+        recipe_two = sample_recipe(user=self.user, title="salad")
+        ingredient_one = sample_ingredient(user=self.user, name="chicken")
+        ingredient_two = sample_ingredient(user=self.user, name="fish")
+        recipe_one.ingredients.add(ingredient_one)
+        recipe_two.ingredients.add(ingredient_two)
+        recipe_three = sample_recipe(user=self.user, title="tacos")
+
+        response = self.client.get(
+            RECIPES_URL,
+            {'ingredients': f'{ingredient_one.id}, {ingredient_two.id}'}
+        )
+        serializer_one = RecipeSerializer(recipe_one)
+        serializer_two = RecipeSerializer(recipe_two)
+        serializer_three = RecipeSerializer(recipe_three)
+
+        self.assertIn(serializer_one.data, response.data)
+        self.assertIn(serializer_two.data, response.data)
+        self.assertNotIn(serializer_three.data, response.data)
