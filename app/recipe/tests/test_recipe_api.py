@@ -261,7 +261,7 @@ class RecipeImageUploadTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_filter_recipes_by_tags(self):
-        """returns recipes with specific tags"""
+        """returns recipes with specific tags another comment"""
         recipe_one = sample_recipe(user=self.user, title="soup")
         recipe_two = sample_recipe(user=self.user, title="salad")
         tag_one = sample_tag(user=self.user, name="Lunch")
